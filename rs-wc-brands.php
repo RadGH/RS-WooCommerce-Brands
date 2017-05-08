@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: RS WooCommerce Brands
-Version:     1.0.0
+Version:     1.0.1
 Plugin URI:  http://radleysustaire.com/
 Description: WordPress plugin which adds a new taxonomy to your products, Brands. Includes a widget to filter brands for use in your store's sidebar, and some utility functions to use brands in other situations.
 Author:      Radley Sustaire
@@ -13,7 +13,7 @@ if ( !defined( 'ABSPATH' ) ) exit;
 
 define( 'RSWCB_URL', untrailingslashit(plugin_dir_url( __FILE__ )) );
 define( 'RSWCB_PATH', dirname(__FILE__) );
-define( 'RSWCB_VERSION', '0.0.1' );
+define( 'RSWCB_VERSION', '1.0.1' );
 
 add_action( 'plugins_loaded', 'rswcb_init_plugin' );
 register_activation_hook( __FILE__, 'rswcb_plugin_activate' );
@@ -21,21 +21,10 @@ register_deactivation_hook( __FILE__, 'rswcb_plugin_deactivate' );
 
 // Initialize plugin: Load plugin files
 function rswcb_init_plugin() {
-	if ( !class_exists('acf') ) {
-		add_action( 'admin_notices', 'rswcb_warn_no_acf' );
-		return;
-	}
-	
 	include_once( RSWCB_PATH . '/includes/brands.php' );
-}
-
-// Display ACF required warning on admin if ACF is not activated
-function rswcb_warn_no_acf() {
-	?>
-	<div class="error">
-		<p><strong>RS WooCommerce Brands:</strong> This plugin requires Advanced Custom Fields PRO in order to operate. Please install and activate ACF Pro, or disable this plugin.</p>
-	</div>
-	<?php
+	
+	include_once( RSWCB_PATH . '/widgets/class-rs-wc-brands-widget.php' );
+	include_once( RSWCB_PATH . '/includes/widgets.php' );
 }
 
 // When activating the plugin: flush rewrite rules, set up custom user roles

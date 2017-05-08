@@ -5,8 +5,8 @@ if ( !defined( 'ABSPATH' ) ) exit;
 // Register Custom Taxonomy
 function rswcb_register_brands_taxonomy() {
 	$labels = array(
-		'name'                       => 'Brand',
-		'singular_name'              => 'Brands',
+		'name'                       => 'Brands',
+		'singular_name'              => 'Brand',
 		'menu_name'                  => 'Brands',
 		'all_items'                  => 'All Brands',
 		'parent_item'                => 'Parent Brand',
@@ -39,4 +39,4 @@ function rswcb_register_brands_taxonomy() {
 	
 	register_taxonomy( 'rswc_brands', array( 'product' ), $args );
 }
-add_action( 'init', 'rswcb_register_brands_taxonomy', 15 );
+add_action( 'init', 'rswcb_register_brands_taxonomy', 6 );
