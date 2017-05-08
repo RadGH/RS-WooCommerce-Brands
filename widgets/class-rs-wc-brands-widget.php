@@ -84,7 +84,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 		$orderby            = isset( $instance['orderby'] ) ? $instance['orderby'] : $this->settings['orderby']['std'];
 		$hide_empty         = isset( $instance['hide_empty'] ) ? $instance['hide_empty'] : $this->settings['hide_empty']['std'];
 		$dropdown_args      = array( 'hide_empty' => $hide_empty );
-		$list_args          = array( 'show_count' => $count, 'hierarchical' => $hierarchical, 'taxonomy' => 'rswc_brands', 'hide_empty' => $hide_empty );
+		$list_args          = array( 'show_count' => $count, 'hierarchical' => $hierarchical, 'taxonomy' => 'rswc_brand', 'hide_empty' => $hide_empty );
 		
 		// Menu Order
 		$list_args['menu_order'] = false;
@@ -98,18 +98,18 @@ class WC_Widget_Product_Brands extends WC_Widget {
 		$this->current_brand   = false;
 		$this->brand_ancestors = array();
 		
-		if ( is_tax( 'rswc_brands' ) ) {
+		if ( is_tax( 'rswc_brand' ) ) {
 			
 			$this->current_brand   = $wp_query->queried_object;
-			$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brands' );
+			$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brand' );
 			
 		} elseif ( is_singular( 'product' ) ) {
 			
-			$product_brand = wc_get_product_terms( $post->ID, 'rswc_brands', apply_filters( 'rswc_product_brands_widget_product_terms_args', array( 'orderby' => 'parent' ) ) );
+			$product_brand = wc_get_product_terms( $post->ID, 'rswc_brand', apply_filters( 'rswc_product_brands_widget_product_terms_args', array( 'orderby' => 'parent' ) ) );
 			
 			if ( ! empty( $product_brand ) ) {
 				$this->current_brand   = end( $product_brand );
-				$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brands' );
+				$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brand' );
 			}
 			
 		}
@@ -119,7 +119,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			
 			// Top level is needed
 			$top_level = get_terms(
-				'rswc_brands',
+				'rswc_brand',
 				array(
 					'fields'       => 'ids',
 					'parent'       => 0,
@@ -130,7 +130,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			
 			// Direct children are wanted
 			$direct_children = get_terms(
-				'rswc_brands',
+				'rswc_brand',
 				array(
 					'fields'       => 'ids',
 					'parent'       => $this->current_brand->term_id,
@@ -144,7 +144,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			if ( $this->brand_ancestors ) {
 				foreach ( $this->brand_ancestors as $ancestor ) {
 					$ancestor_siblings = get_terms(
-						'rswc_brands',
+						'rswc_brand',
 						array(
 							'fields'       => 'ids',
 							'parent'       => $ancestor,
@@ -188,7 +188,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				'show_uncategorized' => 0,
 				'orderby'            => $orderby,
 				'selected'           => $this->current_brand ? $this->current_brand->slug : '',
-				'taxonomy'           => 'rswc_brands',
+				'taxonomy'           => 'rswc_brand',
 			);
 			$dropdown_args = wp_parse_args( $dropdown_args, $dropdown_defaults );
 			
@@ -196,14 +196,14 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			wp_dropdown_categories( apply_filters( 'rswc_product_brands_widget_dropdown_args', $dropdown_args ) );
 			
 			wc_enqueue_js( "
-				jQuery( '.dropdown_rswc_brands' ).change( function() {
+				jQuery( '.dropdown_rswc_brand' ).change( function() {
 					if ( jQuery(this).val() != '' ) {
 						var this_page = '';
 						var home_url  = '" . esc_js( home_url( '/' ) ) . "';
 						if ( home_url.indexOf( '?' ) > 0 ) {
-							this_page = home_url + '&rswc_brands=' + jQuery(this).val();
+							this_page = home_url + '&rswc_brand=' + jQuery(this).val();
 						} else {
-							this_page = home_url + '?rswc_brands=' + jQuery(this).val();
+							this_page = home_url + '?rswc_brand=' + jQuery(this).val();
 						}
 						location.href = this_page;
 					}
