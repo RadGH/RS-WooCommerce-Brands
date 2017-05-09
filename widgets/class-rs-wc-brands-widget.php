@@ -27,15 +27,6 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				'std'   => __( 'Product Brands', 'woocommerce' ),
 				'label' => __( 'Title', 'woocommerce' )
 			),
-			'orderby' => array(
-				'type'  => 'select',
-				'std'   => 'name',
-				'label' => __( 'Order by', 'woocommerce' ),
-				'options' => array(
-					'order' => __( 'Brand Order', 'woocommerce' ),
-					'name'  => __( 'Name', 'woocommerce' )
-				)
-			),
 			'dropdown' => array(
 				'type'  => 'checkbox',
 				'std'   => 0,
@@ -60,6 +51,16 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				'type'  => 'checkbox',
 				'std'   => 0,
 				'label' => __( 'Hide empty brands', 'woocommerce' )
+			),
+			'show_option_all' => array(
+				'type'  => 'checkbox',
+				'std'   => 0,
+				'label' => __( 'Show option for "All" (remove filtering)', 'woocommerce' )
+			),
+			'show_option_all_text'  => array(
+				'type'  => 'text',
+				'std'   => __( 'Any Brand', 'woocommerce' ),
+				'label' => __( '"All" option text', 'woocommerce' )
 			)
 		);
 		
@@ -77,14 +78,20 @@ class WC_Widget_Product_Brands extends WC_Widget {
 	public function widget( $args, $instance ) {
 		global $wp_query, $post;
 		
-		$count              = isset( $instance['count'] ) ? $instance['count'] : $this->settings['count']['std'];
-		$hierarchical       = isset( $instance['hierarchical'] ) ? $instance['hierarchical'] : $this->settings['hierarchical']['std'];
-		$show_children_only = isset( $instance['show_children_only'] ) ? $instance['show_children_only'] : $this->settings['show_children_only']['std'];
-		$dropdown           = isset( $instance['dropdown'] ) ? $instance['dropdown'] : $this->settings['dropdown']['std'];
-		$orderby            = isset( $instance['orderby'] ) ? $instance['orderby'] : $this->settings['orderby']['std'];
-		$hide_empty         = isset( $instance['hide_empty'] ) ? $instance['hide_empty'] : $this->settings['hide_empty']['std'];
-		$dropdown_args      = array( 'hide_empty' => $hide_empty );
-		$list_args          = array( 'show_count' => $count, 'hierarchical' => $hierarchical, 'taxonomy' => 'rswc_brand', 'hide_empty' => $hide_empty );
+		$count                = isset( $instance['count'] ) ? $instance['count'] : $this->settings['count']['std'];
+		$hierarchical         = isset( $instance['hierarchical'] ) ? $instance['hierarchical'] : $this->settings['hierarchical']['std'];
+		$show_children_only   = isset( $instance['show_children_only'] ) ? $instance['show_children_only'] : $this->settings['show_children_only']['std'];
+		$dropdown             = isset( $instance['dropdown'] ) ? $instance['dropdown'] : $this->settings['dropdown']['std'];
+		$hide_empty           = isset( $instance['hide_empty'] ) ? $instance['hide_empty'] : $this->settings['hide_empty']['std'];
+		$show_option_all      = isset( $instance['show_option_all'] ) ? $instance['show_option_all'] : $this->settings['show_option_all']['std'];
+		$show_option_all_text = isset( $instance['show_option_all_text'] ) ? $instance['show_option_all_text'] : $this->settings['show_option_all_text']['std'];
+		$dropdown_args        = array( 'hide_empty' => $hide_empty );
+		$list_args            = array( 'show_count' => $count, 'hierarchical' => $hierarchical, 'taxonomy' => 'rswc_brand', 'hide_empty' => $hide_empty );
+		$orderby              = 'name'; // 'menu_order' also supported but the category is not sortable
+		
+		if ( empty($show_option_all_text) ) $show_option_all_text = $this->settings['show_option_all']['std'];
+		$dropdown_args['show_option_all'] = $show_option_all ? $show_option_all_text : '';
+		$list_args['show_option_all'] = $show_option_all ? $show_option_all_text : '';
 		
 		// Menu Order
 		$list_args['menu_order'] = false;
@@ -192,23 +199,28 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			);
 			$dropdown_args = wp_parse_args( $dropdown_args, $dropdown_defaults );
 			
-			// Stuck with this until a fix for https://core.trac.wordpress.org/ticket/13258
+			$url = get_post_type_archive_link( 'product' );
+			$form_url_tax = false;
+			
+			if ( is_tax( 'product_cat' ) ) $form_url_tax = 'product_cat';
+			else if ( is_tax( 'product_tag' ) ) $form_url_tax = 'product_tag';
+			
+			if ( $form_url_tax ) $url = get_term_link( get_queried_object() );
+			
+			echo '<form action="', $url ,'" method="GET" class="autosubmit">';
+			
+			global $wp_query;
+			
+			if ( $wp_query->query ) foreach( $wp_query->query as $name => $value ) {
+				if ( $name == 'rswc_brand' ) continue;
+				if ( $name == $form_url_tax && is_tax( $form_url_tax ) ) continue; // from form action
+				
+				echo '<input type="hidden" name="'. esc_attr( $name ) .'" value="'. esc_attr( $value ) .'">' . "\n";
+			}
+			
 			wp_dropdown_categories( apply_filters( 'rswc_product_brands_widget_dropdown_args', $dropdown_args ) );
 			
-			wc_enqueue_js( "
-				jQuery( '.dropdown_rswc_brand' ).change( function() {
-					if ( jQuery(this).val() != '' ) {
-						var this_page = '';
-						var home_url  = '" . esc_js( home_url( '/' ) ) . "';
-						if ( home_url.indexOf( '?' ) > 0 ) {
-							this_page = home_url + '&rswc_brand=' + jQuery(this).val();
-						} else {
-							this_page = home_url + '?rswc_brand=' + jQuery(this).val();
-						}
-						location.href = this_page;
-					}
-				});
-			" );
+			echo '</form>';
 			
 			// List
 		} else {
@@ -220,11 +232,46 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			$list_args['show_option_none']           = __('No product brands exist.', 'woocommerce' );
 			$list_args['current_brand']              = ( $this->current_brand ) ? $this->current_brand->term_id : '';
 			$list_args['current_brand_ancestors']    = $this->brand_ancestors;
-			$list_args['taxonomy']                   = 'rswc-brands';
+			$list_args['taxonomy']                   = 'rswc_brand';
+			
+			$terms = get_terms( $list_args );
 			
 			echo '<ul class="product-brands">';
 			
-			wp_list_categories( apply_filters( 'rswc_product_brands_widget_args', $list_args ) );
+			if ( empty($terms) ) {
+				
+				if ( $list_args['show_option_none'] ) {
+					echo '<li class="option-none">', $list_args['show_option_none'], '</li>';
+				}
+				
+			}else{
+				
+				if ( $list_args['show_option_all'] ) {
+					$active = empty(get_query_var( 'product_brand' ));
+					
+					echo '<li class="term-link option-all ', ($active ? 'term-active' : 'term-inactive'), '">';
+						echo '<a href="', esc_attr( remove_query_arg( 'product_brand' ) ),'">';
+							echo $list_args['show_option_all'];
+						echo '</a>';
+					echo '</li>';
+				}
+				
+				foreach( $terms as $i => $term ) {
+					$active = get_query_var( 'product_brand' ) == $term->slug;
+					
+					echo '<li class="term-link term-id-', $term->term_id, ' ', ($active ? 'term-active' : 'term-inactive'), '">';
+						echo '<a href="', esc_attr( add_query_arg( array('product_brand' => $term->slug) ) ),'">';
+							echo esc_html( $term->name );
+						echo '</a>';
+						
+						if ( $count ) {
+							echo ' <span class="term-count">(', $term->count, ')</span>';
+						}
+						
+					echo '</li>';
+				}
+				
+			}
 			
 			echo '</ul>';
 		}
