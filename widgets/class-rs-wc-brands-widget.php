@@ -13,6 +13,8 @@ class WC_Widget_Product_Brands extends WC_Widget {
 	
 	public $current_brand;
 	
+	public $index = 0;
+	
 	/**
 	 * Constructor.
 	 */
@@ -104,11 +106,19 @@ class WC_Widget_Product_Brands extends WC_Widget {
 		// Setup Current Brand
 		$this->current_brand   = false;
 		$this->brand_ancestors = array();
+		$query_term = get_query_var( 'product_brand' );
 		
 		if ( is_tax( 'rswc_brand' ) ) {
 			
 			$this->current_brand   = $wp_query->queried_object;
 			$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brand' );
+		
+		}else if ( $query_term ) {
+			
+			$this->current_brand = get_term_by( 'slug', $query_term, 'rswc_brand' );
+			if ( $this->current_brand ) {
+				$this->brand_ancestors = get_ancestors( $this->current_brand->term_id, 'rswc_brand' );
+			}
 			
 		} elseif ( is_singular( 'product' ) ) {
 			
@@ -190,6 +200,9 @@ class WC_Widget_Product_Brands extends WC_Widget {
 		// Dropdown
 		if ( $dropdown ) {
 			$dropdown_defaults = array(
+				'id'                 => 'product_brand-select-' . $this->index,
+				'name'               => 'product_brand',
+				'value_field'        => 'slug',
 				'show_count'         => $count,
 				'hierarchical'       => $hierarchical,
 				'show_uncategorized' => 0,
@@ -197,6 +210,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				'selected'           => $this->current_brand ? $this->current_brand->slug : '',
 				'taxonomy'           => 'rswc_brand',
 			);
+			
 			$dropdown_args = wp_parse_args( $dropdown_args, $dropdown_defaults );
 			
 			$url = get_post_type_archive_link( 'product' );
@@ -212,13 +226,13 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			global $wp_query;
 			
 			if ( $wp_query->query ) foreach( $wp_query->query as $name => $value ) {
-				if ( $name == 'rswc_brand' ) continue;
+				if ( $name == 'product_brand' ) continue;
 				if ( $name == $form_url_tax && is_tax( $form_url_tax ) ) continue; // from form action
 				
 				echo '<input type="hidden" name="'. esc_attr( $name ) .'" value="'. esc_attr( $value ) .'">' . "\n";
 			}
 			
-			wp_dropdown_categories( apply_filters( 'rswc_product_brands_widget_dropdown_args', $dropdown_args ) );
+			wp_dropdown_categories( apply_filters( 'rswc_brand_widget_dropdown_args', $dropdown_args ) );
 			
 			echo '</form>';
 			
@@ -236,7 +250,7 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			
 			$terms = get_terms( $list_args );
 			
-			echo '<ul class="product-brands">';
+			echo '<ul class="product-brands wc-term-list">';
 			
 			if ( empty($terms) ) {
 				
