@@ -272,9 +272,13 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				
 				foreach( $terms as $i => $term ) {
 					$active = get_query_var( 'product_brand' ) == $term->slug;
+					$link = get_post_type_archive_link('product');
+					if ( get_query_var( 'product_brand' ) ) $link = add_query_arg( 'product_brand', get_query_var( 'product_brand' ), $link );
+					if ( get_query_var( 'orderby' ) ) $link = add_query_arg( 'orderby', get_query_var( 'orderby' ), $link );
+					if ( get_query_var( 'order' ) ) $link = add_query_arg( 'order', get_query_var( 'order' ), $link );
 					
 					echo '<li class="term-link term-id-', $term->term_id, ' ', ($active ? 'term-active' : 'term-inactive'), '">';
-						echo '<a href="', esc_attr( add_query_arg( array('product_brand' => $term->slug) ) ),'">';
+						echo '<a href="', esc_attr( $link ),'">';
 							echo esc_html( $term->name );
 						echo '</a>';
 						
