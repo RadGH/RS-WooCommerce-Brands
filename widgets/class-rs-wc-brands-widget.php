@@ -63,10 +63,53 @@ class WC_Widget_Product_Brands extends WC_Widget {
 				'type'  => 'text',
 				'std'   => __( 'Any Brand', 'woocommerce' ),
 				'label' => __( '"All" option text', 'woocommerce' )
+			),
+			'display_limit'  => array(
+				'type'  => 'number',
+				'std'   => 0,
+				'min'   => 0,
+				'label' => __( 'Display Limit (0 to show all)', 'rs-wc-brands' )
 			)
 		);
 		
 		parent::__construct();
+	}
+	
+	/**
+	 * Get a number of terms with the most posts, sorted alphabetically
+	 *
+	 * @param string $taxonomy
+	 * @param int $max
+	 *
+	 * @return array|bool|int|WP_Error
+	 */
+	function get_popular_terms( $taxonomy = 'rswc_brand', $max = 10 ) {
+		// Get children sorted by count, highest first
+		$args = array(
+			'taxonomy' => $taxonomy,
+			'parent' => 0,
+			'count' => true,
+			'orderby' => 'count',
+			'order' => 'DESC',
+		);
+		
+		$terms = get_terms($args);
+		if ( empty($terms) ) return false;
+		
+		// Use the first N terms, discard the rest
+		if ( count($terms) > $max ) {
+			$terms = array_slice( $terms, 0, $max );
+		}
+		
+		// Sort by name now that we've removed the lower end of terms
+		if ( $terms ) usort( $terms, array(&$this, '__sort_by_object_name') );
+		
+		// The array is now sorted by terms
+		return $terms;
+	}
+	
+	function __sort_by_object_name( $a, $b ) {
+		return strcmp($a->name, $b->name);
 	}
 	
 	/**
@@ -94,6 +137,9 @@ class WC_Widget_Product_Brands extends WC_Widget {
 		if ( empty($show_option_all_text) ) $show_option_all_text = $this->settings['show_option_all']['std'];
 		$dropdown_args['show_option_all'] = $show_option_all ? $show_option_all_text : '';
 		$list_args['show_option_all'] = $show_option_all ? $show_option_all_text : '';
+		
+		// Custom display limit
+		$display_limit = isset( $instance['display_limit'] ) ? $instance['display_limit'] : $this->settings['display_limit']['std'];
 		
 		// Menu Order
 		$list_args['menu_order'] = false;
@@ -248,9 +294,15 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			$list_args['current_brand_ancestors']    = $this->brand_ancestors;
 			$list_args['taxonomy']                   = 'rswc_brand';
 			
-			$terms = get_terms( $list_args );
 			
-			echo '<ul class="product-brands wc-term-list">';
+			// Display only popular terms, or all terms?
+			if ( $display_limit > 0 ) {
+				$terms = $this->get_popular_terms( 'rswc_brand', $display_limit );
+			}else{
+				$terms = get_terms( $list_args );
+			}
+			
+			echo '<ul class="product-brands wc-term-list rs-wc-initial-brands">';
 			
 			if ( empty($terms) ) {
 				
@@ -292,6 +344,54 @@ class WC_Widget_Product_Brands extends WC_Widget {
 			}
 			
 			echo '</ul>';
+			
+			// If only popular terms were displayed above, make a button to "show all"
+			if ( $display_limit > 0 && !empty($terms) && count($terms) >= $display_limit ) {
+				$all_terms = get_terms( $list_args );
+				
+				$js = "jQuery(this).closest('.rs-wc-brands-widget').find('ul.rs-wc-initial-brands').remove().end().find('ul.rs-wc-all-terms').css('display', ''); jQuery(this).closest('div.rs-wc-show-all-brands').remove(); return false;";
+				
+				echo '<div class="rs-wc-show-all-brands">';
+					echo '<a href="" class="button rs-wc-show-all-brands-button" onclick="'. esc_attr($js) .'">Show All Brands</a>';
+				echo '</div>';
+				
+				echo '<ul class="product-brands wc-term-list rs-wc-all-terms" style="display: none;">';
+				
+				if ( $all_terms ) {
+					
+					if ( $list_args['show_option_all'] ) {
+						$active = empty(get_query_var( 'product_brand' ));
+						
+						echo '<li class="term-link option-all ', ($active ? 'term-active' : 'term-inactive'), '">';
+						echo '<a href="', esc_attr( remove_query_arg( 'product_brand' ) ),'">';
+						echo $list_args['show_option_all'];
+						echo '</a>';
+						echo '</li>';
+					}
+					
+					foreach( $all_terms as $i => $term ) {
+						$active = get_query_var( 'product_brand' ) == $term->slug;
+						$link = get_post_type_archive_link('product');
+						if ( get_query_var( 'product_brand' ) ) $link = add_query_arg( 'product_brand', get_query_var( 'product_brand' ), $link );
+						if ( get_query_var( 'orderby' ) ) $link = add_query_arg( 'orderby', get_query_var( 'orderby' ), $link );
+						if ( get_query_var( 'order' ) ) $link = add_query_arg( 'order', get_query_var( 'order' ), $link );
+						
+						echo '<li class="term-link term-id-', $term->term_id, ' ', ($active ? 'term-active' : 'term-inactive'), '">';
+						echo '<a href="', esc_attr( $link ),'">';
+						echo esc_html( $term->name );
+						echo '</a>';
+						
+						if ( $count ) {
+							echo ' <span class="term-count">(', $term->count, ')</span>';
+						}
+						
+						echo '</li>';
+					}
+					
+				}
+				
+				echo '</ul>';
+			}
 		}
 		
 		$this->widget_end( $args );
